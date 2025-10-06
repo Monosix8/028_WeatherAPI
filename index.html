@@ -131,4 +131,198 @@
             to { opacity: 1; }
         }
 
+        .result-card {
+            background: linear-gradient(135deg, #a8e6cf, #dcedc1);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .result-card:hover {
+            transform: scale(1.02);
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 0.5rem 0;
+            font-size: 1.1em;
+        }
+
+        .result-label {
+            font-weight: bold;
+            color: #2d3436;
+        }
+
+        .result-value {
+            color: #0984e3;
+            font-weight: 500;
+        }
+
+        .loading {
+            display: none;
+            margin: 1rem 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0984e3;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            color: #e17055;
+            background: rgba(225, 112, 85, 0.1);
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 2em; }
+            input[type="text"] { width: 60%; }
+            button { margin-left: 5px; font-size: 1em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌤️ Cek Cuaca</h1>
         
+        <div class="input-section">
+            <input type="text" id="location" placeholder="Masukkan nama lokasi (misal: Yogyakarta, Indonesia)" required>
+            <button onclick="fetchWeather()">Cek Cuaca</button>
+        </div>
+
+        <hr style="border: 1px solid #dfe6e9; margin: 1rem 0;">
+
+        <p id="lokasi">Lokasi: -</p>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Mengambil data cuaca...</p>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div id="tampilan">
+            <div class="result-card">
+                <div class="result-item">
+                    <span class="result-label">🌍 Negara:</span>
+                    <span class="result-value" id="country">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">🏛️ Provinsi:</span>
+                    <span class="result-value" id="region">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">🏘️ Kecamatan/Kota:</span>
+                    <span class="result-value" id="name">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">🌡️ Suhu (°C):</span>
+                    <span class="result-value" id="temp">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">📍 Longitude:</span>
+                    <span class="result-value" id="lon">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">🔢 Latitude:</span>
+                    <span class="result-value" id="lat">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function fetchWeather() {
+            const location = $('#location').val().trim();
+            
+            if (!location) {
+                showError('Silakan masukkan nama lokasi!');
+                return;
+            }
+
+            const loading = $('#loading');
+            const error = $('#error');
+            const tampilan = $('#tampilan');
+            const lokasiP = $('#lokasi');
+
+            error.hide();
+            tampilan.hide();
+            loading.show();
+
+            const urlapi = `https://wttr.in/${encodeURIComponent(location)}?format=j1`;
+
+            $.ajax({
+                url: urlapi,
+                method: "GET",
+                dataType: "json",
+                success: function(data) {
+                    console.log(data);
+                    
+                    const nearest = data.nearest_area[0];
+                    const current = data.current_condition[0];
+                    
+                    if (!nearest || !current) {
+                        throw new Error('Data lokasi tidak ditemukan. Coba lokasi lain.');
+                    }
+
+                    lokasiP.text(`CUACA: ${nearest.areaName[0].value}, ${nearest.country[0].value}`);
+
+                    $('#country').text(nearest.country[0].value || 'Tidak tersedia');
+                    $('#region').text(nearest.region[0].value || 'Tidak tersedia'); // Provinsi/Region
+                    $('#name').text(nearest.areaName[0].value || 'Tidak tersedia'); // Kota/Kecamatan
+                    $('#temp').text(current.temp_C + '°C');
+                    $('#lon').text(nearest.longitude || 'Tidak tersedia');
+                    $('#lat').text(nearest.latitude || 'Tidak tersedia');
+
+                    tampilan.show();
+                },
+                error: function(xhr, status, error) {
+                    console.log("Error:", error);
+                    let errorMsg = 'Error: ' + error + '. ';
+                    if (xhr.status === 404) {
+                        errorMsg += 'Lokasi tidak ditemukan. Coba ejaan lain (misal: "Yogyakarta").';
+                    } else {
+                        errorMsg += 'Pastikan koneksi internet stabil.';
+                    }
+                    showError(errorMsg);
+                },
+                complete: function() {
+                    loading.hide();
+                }
+            });
+        }
+
+        function showError(message) {
+            const error = $('#error');
+            error.text(message);
+            error.show();
+        }
+
+        $('#location').keypress(function(e) {
+            if (e.which === 13) {
+                fetchWeather();
+            }
+        });
+
+        $(document).ready(function() {
+            $('#location').val(''); 
+        });
+    </script>
+</body>
+</html>
